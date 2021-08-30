@@ -1,5 +1,12 @@
+package RedblackTree;
+
+import com.sun.org.apache.regexp.internal.RE;
+
 import java.security.Key;
 import java.util.Comparator;
+import java.util.LinkedList;
+import java.util.Queue;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.zip.CheckedOutputStream;
 
 /**
@@ -8,14 +15,37 @@ import java.util.zip.CheckedOutputStream;
  * @Description:
  */
 
-interface map<KeyType,ValueType>{
 
-    boolean put(KeyType key,ValueType value);
-    boolean remove(KeyType key);
-    ValueType get(KeyType key);
-    Integer size();
-}
-class RedBlackTree<KeyType,Valuetype> implements map<KeyType,Valuetype>{
+ public class RedBlackTree<KeyType,Valuetype> implements Map<KeyType,Valuetype>{
+
+    @Override
+    public boolean put(KeyType key, Valuetype value) {
+        if(key==null)return false;
+        Node node=new Node(key,value);
+        return insert(node);
+    }
+
+    @Override
+    public boolean remove(KeyType key) {
+        if(key==null)return false;
+        Node node=new Node(key);
+        return remove(node);
+    }
+
+    @Override
+    public Valuetype get(KeyType key) {
+        if(key==null)return null;
+        Node node=new Node(key);
+        Node findNode=get(node);
+        if(findNode==null)return null;
+        else return findNode.value;
+    }
+
+    public Integer size() {
+        return size;
+    }
+
+
 //            1）每个结点要么是红的，要么是黑的。
 //            2）根结点是黑的。
 //            3）每个叶结点（叶结点即指树尾端NIL指针或NULL结点）是黑的。
@@ -29,17 +59,44 @@ class RedBlackTree<KeyType,Valuetype> implements map<KeyType,Valuetype>{
     private Node sentinel;
     private Integer size;
     Comparator comparator;
-
-    @Override
-    public boolean put(KeyType key,Valuetype value){
-        Node node=new Node(key,value);
-        node.right=node.left=node.p=sentinel;
-        node.color=RED;
-        return insert(node);
+    private Integer limit5(Node node){
+        Integer l=0,r=0;
+        if(node==sentinel){
+            return 1;
+        }
+        Integer lh=limit5(node.left);
+        Integer rh=limit5(node.right);
+        if(lh.equals(-1)||rh.equals(-1)||!lh.equals(rh)){
+            return -1;
+        }
+        return lh+((node.color==BLACK?1:0));
     }
-    @Override
-    public  boolean remove(KeyType key){
-        Node eraseNode=new Node(key);
+    //检查是否满足条件4,5
+    public  boolean check(){
+        if(root==sentinel)return true;
+        Node x=root;
+        Queue<Node>queue=new LinkedList<>();
+        queue.add(root);
+        while(!queue.isEmpty()){
+            Integer size=queue.size();
+            for(int i=0;i<size;i++){
+                Node node=queue.poll();
+                if(node.color==RED&&(node.left.color== RED||node.right.color==RED)){
+                    return false;
+                }
+                if(node.left!=sentinel){
+                    queue.add(node.left);
+                }
+                if(node.right!=sentinel){
+                    queue.add(node.right);
+                }
+                queue.peek();
+            }
+        }
+        Integer num=limit5(root);
+       return  !num.equals(-1);
+    }
+    private   boolean remove(Node eraseNode){
         Node x=root;
         while(x!=sentinel){
             if(x.compareTo(eraseNode)==0){
@@ -56,14 +113,12 @@ class RedBlackTree<KeyType,Valuetype> implements map<KeyType,Valuetype>{
         return false;
     }
 
-    @Override
-    public Valuetype get(KeyType key) {
-        Node node=new Node(key);
-        Valuetype res=null;
+    private final Node get(Node node) {
+        Node res=null;
         Node x=root;
         while(x!=sentinel){
             if(x.compareTo(node)==0){
-                res=x.value;
+                res=x;
                 break;
             }else if(x.compareTo(node)<0){
                 x=x.right;
@@ -72,12 +127,9 @@ class RedBlackTree<KeyType,Valuetype> implements map<KeyType,Valuetype>{
         return res;
     }
 
-    @Override
-    public Integer size() {
-        return size;
-    }
-    RedBlackTree(Comparator<KeyType> comparator){
+    public RedBlackTree(Comparator<KeyType> comparator){
         sentinel=new Node();
+        sentinel.color=BLACK;
         root=sentinel;
         size=0;
         this.comparator=comparator;
@@ -85,7 +137,7 @@ class RedBlackTree<KeyType,Valuetype> implements map<KeyType,Valuetype>{
     private void RightRotate(Node x){
         Node y=x.left;
         x.left=y.right;
-        y.right.p=x;
+       if(y.right!=sentinel) y.right.p=x;
         y.p=x.p;
         if(x.p==sentinel){
             root=y;
@@ -97,8 +149,9 @@ class RedBlackTree<KeyType,Valuetype> implements map<KeyType,Valuetype>{
     }
     private void LeftRotate(Node x){
         Node y=x.right;
+        boolean f=x.p.right==sentinel;
         x.right=y.left;
-        y.left.p=x;
+       if(y.left!=sentinel) y.left.p=x;
         y.p=x.p;
         if(x.p==sentinel){
             root=y;
@@ -132,7 +185,6 @@ class RedBlackTree<KeyType,Valuetype> implements map<KeyType,Valuetype>{
         }
         z.left=sentinel;
         z.right=sentinel;
-        System.out.println("Inside key:"+z.key+" parent key:"+y.key);
         InsertFixup(z);
         return true;
     }
@@ -204,7 +256,6 @@ class RedBlackTree<KeyType,Valuetype> implements map<KeyType,Valuetype>{
         //替换之后,我们再去实际删除用于替换的节点,
         //由于该节点是最小的大于z的节点(右子树的最左侧的位置),来找到,所以该节点最多只有右孩子,只需要做一次2的操作即可
 
-
         Node x,y;//y:删除的点,x:y的唯一儿子
         if(z.left==sentinel||z.right==sentinel){
             y=z;
@@ -237,6 +288,7 @@ class RedBlackTree<KeyType,Valuetype> implements map<KeyType,Valuetype>{
         //因为删除的y如果是黑色节点,如果y存在子树,那么子树的叶子到root的距离(经过黑色节点个数)必定-1
         //条件5不再满足,需要调整
         //找到一个红色节点,给他设置为黑色,补齐删除缺失的黑色节点
+        //x可能是哨兵,哨兵只有一个,所以在旋转的时候一定不要更改哨兵的p
         while(x!=root&&x.color==BLACK){
             if(x==x.p.left){
                 //case 1:x的兄弟节点为红,需要转换为兄弟节点为黑的情况处理,
@@ -267,6 +319,7 @@ class RedBlackTree<KeyType,Valuetype> implements map<KeyType,Valuetype>{
                     w.color=x.p.color;
                     x.p.color=BLACK;
                     w.right.color=BLACK;
+                    LeftRotate(x.p);
                     x=root;
                 }
             }else{
@@ -290,6 +343,7 @@ class RedBlackTree<KeyType,Valuetype> implements map<KeyType,Valuetype>{
                     w.color=x.p.color;
                     x.p.color=BLACK;
                     w.left.color=BLACK;
+                    RightRotate(x.p);
                     x=root;
                 }
             }
@@ -307,9 +361,11 @@ class RedBlackTree<KeyType,Valuetype> implements map<KeyType,Valuetype>{
         public Node right;
         public boolean color;
         Node(KeyType key,Valuetype value){
+            p=left=right=sentinel;color=RED;
             this.key=key;this.value=value;
         }
         Node(KeyType key){
+            p=left=right=sentinel;color=RED;
             this.key=key;
         }
         Node(){};
